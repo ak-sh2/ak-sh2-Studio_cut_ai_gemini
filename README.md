@@ -1,0 +1,1 @@
+# ak-sh2-Studio_cut_ai_gemini
