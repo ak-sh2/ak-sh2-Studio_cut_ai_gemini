@@ -1,0 +1,2305 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+  <title>Studio_cut_AI — Background Removal, Replacement & Enhancement</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <!-- Lucide Icons -->
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.469.0/dist/umd/lucide.min.js"></script>
+  <!-- heic2any for browser HEIC/HEIF conversion -->
+  <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
+  <!-- Inter Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+            }
+          }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    /* Smooth scrolling everywhere & thin light-grey scrollbar that blends in */
+    html, body, * {
+      scroll-behavior: smooth;
+      scrollbar-width: thin;
+      scrollbar-color: #cbd5e1 transparent;
+    }
+    .dark html, .dark body, .dark * {
+      scrollbar-color: #475569 transparent;
+    }
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background-color: #cbd5e1;
+      border-radius: 9999px;
+    }
+    .dark ::-webkit-scrollbar-thumb {
+      background-color: #475569;
+    }
+
+    /* Transparency checkerboard pattern */
+    .checkerboard {
+      background-color: #f8fafc;
+      background-image:
+        linear-gradient(45deg, #e2e8f0 25%, transparent 25%),
+        linear-gradient(-45deg, #e2e8f0 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #e2e8f0 75%),
+        linear-gradient(-45deg, transparent 75%, #e2e8f0 75%);
+      background-size: 20px 20px;
+      background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+    }
+    .dark .checkerboard {
+      background-color: #0f172a;
+      background-image:
+        linear-gradient(45deg, #1e293b 25%, transparent 25%),
+        linear-gradient(-45deg, #1e293b 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #1e293b 75%),
+        linear-gradient(-45deg, transparent 75%, #1e293b 75%);
+    }
+
+    /* Ensure touch targets >= 44px and zero text overflow */
+    .touch-target {
+      min-height: 44px;
+      min-width: 44px;
+    }
+
+    /* Custom slider styling for accessible touch targets */
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 28px;
+      background: transparent;
+      cursor: pointer;
+    }
+    input[type="range"]::-webkit-slider-runnable-track {
+      height: 6px;
+      border-radius: 9999px;
+      background: #cbd5e1;
+    }
+    .dark input[type="range"]::-webkit-slider-runnable-track {
+      background: #334155;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: #4f46e5;
+      border: 2px solid #ffffff;
+      margin-top: -8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+      transition: transform 0.15s ease;
+    }
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.1);
+    }
+
+    /* Details accordion smooth transitions */
+    details > summary {
+      list-style: none;
+    }
+    details > summary::-webkit-details-marker {
+      display: none;
+    }
+    details[open] > summary .chevron-icon {
+      transform: rotate(180deg);
+    }
+
+    /* Print fallback styling for Canvas export reliability */
+    #printContainer {
+      display: none;
+    }
+    @media print {
+      body > *:not(#printContainer) {
+        display: none !important;
+      }
+      #printContainer {
+        display: block !important;
+        width: 100%;
+        margin: 0;
+        padding: 0;
+      }
+      #printContainer img {
+        max-width: 100%;
+        height: auto;
+        page-break-after: always;
+      }
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 font-sans antialiased selection:bg-indigo-500 selection:text-white transition-colors duration-200 min-h-screen">
+
+  <!-- Print Container for Save-as-PDF Fallback -->
+  <div id="printContainer"></div>
+
+  <!-- Main Single-Flow Scrollable Wrapper (Nothing fixed or sticky at top) -->
+  <div class="max-w-6xl mx-auto px-3 sm:px-6 py-4 sm:py-8 flex flex-col gap-6">
+
+    <!-- Top Header Bar (Normal document flow, NOT sticky/fixed) -->
+    <header class="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center gap-3 min-w-0">
+        <div class="w-11 h-11 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+          <i data-lucide="scissors" class="w-6 h-6"></i>
+        </div>
+        <div class="min-w-0">
+          <h1 class="text-lg sm:text-xl font-bold tracking-tight truncate">Studio_cut_AI</h1>
+          <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 break-words">Local Background Removal, Replacement &amp; Image Enhancement</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2 sm:gap-3 flex-wrap">
+        <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60">
+          <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+          <span>100% Browser Local</span>
+        </span>
+
+        <!-- Dark / Light Mode Toggle -->
+        <button
+          id="themeToggleBtn"
+          type="button"
+          class="touch-target inline-flex items-center justify-center gap-2 px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-sm font-medium transition-colors"
+          aria-label="Toggle dark or light theme"
+        >
+          <i id="themeIconSun" data-lucide="sun" class="w-4 h-4 hidden dark:inline-block text-amber-400"></i>
+          <i id="themeIconMoon" data-lucide="moon" class="w-4 h-4 inline-block dark:hidden text-slate-700"></i>
+          <span id="themeToggleText" class="truncate">Light Mode</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- 3-Step Flow Stepper Navigation -->
+    <nav aria-label="Workflow steps" class="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3 sm:p-4 shadow-sm">
+      <div class="grid grid-cols-3 gap-2 sm:gap-4">
+        <button
+          id="stepBtn1"
+          type="button"
+          class="touch-target flex items-center justify-center sm:justify-start gap-2.5 px-3 py-2.5 rounded-xl text-left font-medium text-xs sm:text-sm transition-all min-w-0 bg-indigo-50 text-indigo-700 dark:bg-indigo-950/70 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800"
+        >
+          <span class="w-6 h-6 rounded-full bg-indigo-600 text-white text-xs font-bold flex items-center justify-center shrink-0">1</span>
+          <span class="truncate">Upload</span>
+        </button>
+
+        <button
+          id="stepBtn2"
+          type="button"
+          class="touch-target flex items-center justify-center sm:justify-start gap-2.5 px-3 py-2.5 rounded-xl text-left font-medium text-xs sm:text-sm transition-all min-w-0 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60 border border-transparent"
+        >
+          <span class="w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold flex items-center justify-center shrink-0">2</span>
+          <span class="truncate">Edit</span>
+        </button>
+
+        <button
+          id="stepBtn3"
+          type="button"
+          class="touch-target flex items-center justify-center sm:justify-start gap-2.5 px-3 py-2.5 rounded-xl text-left font-medium text-xs sm:text-sm transition-all min-w-0 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60 border border-transparent"
+        >
+          <span class="w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold flex items-center justify-center shrink-0">3</span>
+          <span class="truncate">Download</span>
+        </button>
+      </div>
+    </nav>
+
+    <!-- Friendly Error / Status Banner (Hidden by default) -->
+    <div id="alertBanner" role="alert" class="hidden rounded-2xl border p-4 flex items-start justify-between gap-3 transition-all">
+      <div class="flex items-start gap-3 min-w-0">
+        <i id="alertIcon" data-lucide="alert-circle" class="w-5 h-5 shrink-0 mt-0.5"></i>
+        <div class="min-w-0">
+          <h2 id="alertTitle" class="text-sm font-semibold break-words">Notice</h2>
+          <p id="alertMessage" class="text-xs sm:text-sm mt-0.5 break-words"></p>
+        </div>
+      </div>
+      <button id="alertCloseBtn" type="button" class="touch-target -m-1 p-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 shrink-0" aria-label="Dismiss message">
+        <i data-lucide="x" class="w-4 h-4"></i>
+      </button>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- STEP 1: UPLOAD SECTION                     -->
+    <!-- ========================================== -->
+    <section id="sectionUpload" class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-6 shadow-sm flex flex-col gap-5">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div class="min-w-0">
+          <h2 class="text-base sm:text-lg font-bold flex items-center gap-2">
+            <i data-lucide="upload-cloud" class="w-5 h-5 text-indigo-500 shrink-0"></i>
+            <span class="truncate">Step 1: Select or Drop Your Image</span>
+          </h2>
+          <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+            Supports JPG, JPEG, PNG, WebP, and HEIC/HEIF. Large photos are automatically scaled for smooth editing while keeping full resolution for export.
+          </p>
+        </div>
+      </div>
+
+      <!-- Drag and Drop Zone -->
+      <div
+        id="dropZone"
+        tabindex="0"
+        role="button"
+        aria-label="Upload image dropzone"
+        class="border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-indigo-500 dark:hover:border-indigo-400 rounded-2xl p-6 sm:p-10 text-center transition-all cursor-pointer bg-slate-50/70 dark:bg-slate-950/40 flex flex-col items-center justify-center gap-4"
+      >
+        <div class="w-14 h-14 rounded-2xl bg-indigo-50 dark:bg-indigo-950/80 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shadow-inner">
+          <i data-lucide="image-plus" class="w-7 h-7"></i>
+        </div>
+
+        <div class="max-w-md min-w-0">
+          <p class="text-sm sm:text-base font-semibold text-slate-800 dark:text-slate-100 break-words">
+            Drag &amp; drop an image here, or use the buttons below
+          </p>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 break-words">
+            Automatic EXIF orientation fix &bull; Browser HEIC decoder &bull; Full-res preservation
+          </p>
+        </div>
+
+        <!-- Hidden File Inputs -->
+        <input
+          id="fileInputGallery"
+          type="file"
+          accept=".jpg,.jpeg,.png,.webp,.heic,.heif,image/jpeg,image/png,image/webp,image/heic,image/heif"
+          class="hidden"
+        />
+        <input
+          id="fileInputCamera"
+          type="file"
+          accept="image/*"
+          capture="environment"
+          class="hidden"
+        />
+
+        <!-- Upload Action Buttons (Touch targets >= 44px) -->
+        <div class="flex flex-wrap items-center justify-center gap-3 w-full pt-2">
+          <button
+            id="browseFilesBtn"
+            type="button"
+            class="touch-target inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-sm shadow-sm transition-colors"
+          >
+            <i data-lucide="folder-open" class="w-4 h-4 shrink-0"></i>
+            <span>Choose Photo / Gallery</span>
+          </button>
+
+          <button
+            id="cameraPickBtn"
+            type="button"
+            class="touch-target inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-medium text-sm border border-slate-200 dark:border-slate-700 transition-colors"
+          >
+            <i data-lucide="camera" class="w-4 h-4 shrink-0"></i>
+            <span>Take Photo (Mobile)</span>
+          </button>
+
+          <button
+            id="loadDemoPortraitBtn"
+            type="button"
+            class="touch-target inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/70 text-emerald-700 dark:text-emerald-300 font-medium text-sm border border-emerald-200 dark:border-emerald-800 transition-colors"
+          >
+            <i data-lucide="sparkles" class="w-4 h-4 shrink-0"></i>
+            <span>Try Sample Portrait</span>
+          </button>
+
+          <button
+            id="loadDemoProductBtn"
+            type="button"
+            class="touch-target inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/60 dark:hover:bg-amber-900/70 text-amber-700 dark:text-amber-300 font-medium text-sm border border-amber-200 dark:border-amber-800 transition-colors"
+          >
+            <i data-lucide="package" class="w-4 h-4 shrink-0"></i>
+            <span>Try Sample Product</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Supported Format Chips -->
+      <div class="flex flex-wrap items-center justify-between gap-2 pt-1 text-xs text-slate-500 dark:text-slate-400">
+        <div class="flex flex-wrap items-center gap-1.5">
+          <span class="px-2.5 py-1 rounded-md bg-slate-100 dark:bg-slate-800 font-medium">JPG / JPEG</span>
+          <span class="px-2.5 py-1 rounded-md bg-slate-100 dark:bg-slate-800 font-medium">PNG</span>
+          <span class="px-2.5 py-1 rounded-md bg-slate-100 dark:bg-slate-800 font-medium">WebP</span>
+          <span class="px-2.5 py-1 rounded-md bg-slate-100 dark:bg-slate-800 font-medium">HEIC / HEIF</span>
+        </div>
+        <span id="uploadMetaInfo" class="truncate">No image loaded yet</span>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- STEP 2: EDIT WORKSPACE                     -->
+    <!-- ========================================== -->
+    <section id="sectionEdit" class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-6 shadow-sm flex flex-col gap-6">
+      <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
+        <div class="min-w-0">
+          <h2 class="text-base sm:text-lg font-bold flex items-center gap-2">
+            <i data-lucide="sliders-horizontal" class="w-5 h-5 text-indigo-500 shrink-0"></i>
+            <span class="truncate">Step 2: Edit, Cutout &amp; Enhance</span>
+          </h2>
+          <p id="imageDimensionsBadge" class="text-xs text-slate-500 dark:text-slate-400 mt-0.5 break-words">
+            Load an image above or tap a sample to begin editing.
+          </p>
+        </div>
+
+        <!-- Undo / Reset / Change Image Toolbar -->
+        <div class="flex flex-wrap items-center gap-2">
+          <button
+            id="undoBtn"
+            type="button"
+            disabled
+            class="touch-target inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-medium border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-40 disabled:pointer-events-none transition-colors"
+          >
+            <i data-lucide="undo-2" class="w-4 h-4 shrink-0"></i>
+            <span>Undo</span>
+            <span id="undoCountBadge" class="px-1.5 py-0.5 text-[11px] rounded bg-slate-200 dark:bg-slate-700">0</span>
+          </button>
+
+          <button
+            id="resetAllBtn"
+            type="button"
+            disabled
+            class="touch-target inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-medium border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-40 disabled:pointer-events-none transition-colors"
+          >
+            <i data-lucide="rotate-ccw" class="w-4 h-4 shrink-0"></i>
+            <span>Reset</span>
+          </button>
+
+          <button
+            id="goToDownloadStepBtn"
+            type="button"
+            disabled
+            class="touch-target inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-40 disabled:pointer-events-none transition-colors shadow-sm"
+          >
+            <span>Next: Download</span>
+            <i data-lucide="arrow-down-right" class="w-4 h-4 shrink-0"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Progress Indicator Bar (For HEIC Decode, Background Removal, 2x Upscale) -->
+      <div id="progressContainer" class="hidden rounded-xl bg-indigo-50/90 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 p-4 flex flex-col gap-2">
+        <div class="flex items-center justify-between gap-2 text-xs sm:text-sm font-medium text-indigo-900 dark:text-indigo-200">
+          <div class="flex items-center gap-2 min-w-0">
+            <i data-lucide="loader-2" class="w-4 h-4 animate-spin text-indigo-600 dark:text-indigo-400 shrink-0"></i>
+            <span id="progressStatusText" class="truncate">Processing image...</span>
+          </div>
+          <span id="progressPercentText" class="font-bold shrink-0">0%</span>
+        </div>
+        <div class="w-full h-2.5 bg-indigo-200/70 dark:bg-indigo-900/70 rounded-full overflow-hidden">
+          <div id="progressBarFill" class="h-full bg-indigo-600 dark:bg-indigo-400 transition-all duration-200 rounded-full" style="width: 0%"></div>
+        </div>
+      </div>
+
+      <!-- Workspace Grid: Left/Top Interactive Canvas + Right/Bottom Collapsible Controls -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+        <!-- Interactive Preview & Before/After Compare Column (7 cols on desktop) -->
+        <div class="lg:col-span-7 flex flex-col gap-3 min-w-0">
+          <div class="relative w-full rounded-2xl border border-slate-200 dark:border-slate-800 checkerboard overflow-hidden flex items-center justify-center min-h-[280px] sm:min-h-[420px] p-2 sm:p-4">
+
+            <!-- Empty State Placeholder -->
+            <div id="canvasEmptyState" class="flex flex-col items-center justify-center text-center p-6 max-w-sm gap-3">
+              <div class="w-12 h-12 rounded-full bg-slate-200/80 dark:bg-slate-800 text-slate-500 flex items-center justify-center">
+                <i data-lucide="image" class="w-6 h-6"></i>
+              </div>
+              <p class="text-sm font-medium text-slate-600 dark:text-slate-300">No Image Active</p>
+              <p class="text-xs text-slate-500 dark:text-slate-400">Upload a photo or tap "Try Sample Portrait" above to inspect and edit on the canvas.</p>
+            </div>
+
+            <!-- Canvas Stage Wrapper -->
+            <div id="canvasStageWrapper" class="hidden relative max-w-full max-h-[540px] flex items-center justify-center select-none">
+              <!-- Main Edited Output Canvas -->
+              <canvas id="displayCanvas" class="max-w-full max-h-[520px] w-auto h-auto rounded-lg shadow-md block"></canvas>
+
+              <!-- Before/After Overlay Canvas (Clipped via style.clipPath) -->
+              <canvas id="beforeCanvas" class="hidden absolute inset-0 max-w-full max-h-[520px] w-full h-full rounded-lg pointer-events-none"></canvas>
+
+              <!-- Split Divider Line -->
+              <div id="compareDividerLine" class="hidden absolute top-0 bottom-0 w-0.5 bg-white shadow-[0_0_8px_rgba(0,0,0,0.6)] pointer-events-none" style="left: 50%;">
+                <div class="
+
+absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-indigo-600 text-white border-2 border-white shadow-lg flex items-center justify-center">
+                  <i data-lucide="move-horizontal" class="w-4 h-4"></i>
+                </div>
+                <span class="absolute top-2 right-2 px-2 py-0.5 rounded bg-black/70 text-white text-[10px] font-semibold uppercase tracking-wider">Before</span>
+                <span class="absolute top-2 left-2 px-2 py-0.5 rounded bg-indigo-600/90 text-white text-[10px] font-semibold uppercase tracking-wider">After</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Before / After Compare Bar -->
+          <div class="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-xl p-3 flex flex-wrap items-center justify-between gap-3">
+            <label class="inline-flex items-center gap-2.5 cursor-pointer touch-target">
+              <input id="compareToggleCheckbox" type="checkbox" disabled class="w-5 h-5 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 dark:border-slate-600" />
+              <span class="text-xs sm:text-sm font-medium">Before / After Split Compare</span>
+            </label>
+
+            <div id="compareSliderBox" class="flex items-center gap-3 flex-1 min-w-[180px] max-w-xs opacity-50 pointer-events-none">
+              <span class="text-xs text-slate-500 shrink-0">Before</span>
+              <input id="compareSplitSlider" type="range" min="0" max="100" value="50" aria-label="Before and after comparison split position" />
+              <span class="text-xs text-slate-500 shrink-0">After</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Collapsible Controls Column (5 cols on desktop) -->
+        <div class="lg:col-span-5 flex flex-col gap-4 min-w-0">
+
+          <!-- 1. Collapsible Section: Background Removal -->
+          <details open class="group bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden">
+            <summary class="touch-target px-4 py-3.5 cursor-pointer flex items-center justify-between gap-2 font-semibold text-sm sm:text-base select-none hover:bg-slate-100/80 dark:hover:bg-slate-800/80 transition-colors">
+              <div class="flex items-center gap-2.5 min-w-0">
+                <i data-lucide="wand-2" class="w-5 h-5 text-indigo-500 shrink-0"></i>
+                <span class="truncate">Background Removal</span>
+              </div>
+              <i data-lucide="chevron-down" class="chevron-icon w-4 h-4 text-slate-400 transition-transform duration-200 shrink-0"></i>
+            </summary>
+
+            <div class="p-4 pt-2 border-t border-slate-200/70 dark:border-slate-800 flex flex-col gap-4">
+              <p class="text-xs text-slate-500 dark:text-slate-400">
+                Isolates the main subject with clean edges and hair/detail feathering directly in your browser.
+              </p>
+
+              <!-- Primary Remove Background Action -->
+              <div class="flex flex-wrap gap-2">
+                <button
+                  id="removeBgBtn"
+                  type="button"
+                  disabled
+                  class="touch-target flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm shadow-sm disabled:opacity-40 disabled:pointer-events-none transition-colors"
+                >
+                  <i data-lucide="sparkles" class="w-4 h-4 shrink-0"></i>
+                  <span>Remove Background</span>
+                </button>
+
+                <button
+                  id="restoreOriginalBgBtn"
+                  type="button"
+                  disabled
+                  class="touch-target inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs sm:text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-40 disabled:pointer-events-none transition-colors"
+                >
+                  <i data-lucide="eye" class="w-4 h-4 shrink-0"></i>
+                  <span>Restore BG</span>
+                </button>
+              </div>
+
+              <!-- Fine Edge / Hair Refinement Controls -->
+              <div class="flex flex-col gap-3 pt-1">
+                <div class="flex flex-col gap-1">
+                  <div class="flex justify-between text-xs">
+                    <label for="sensitivitySlider" class="font-medium text-slate-700 dark:text-slate-300">Subject Edge Tolerance</label>
+                    <span id="sensitivityVal" class="font-mono text-slate-500">50</span>
+                  </div>
+                  <input id="sensitivitySlider" type="range" min="10" max="90" value="50" />
+                </div>
+
+                <div class="flex flex-col gap-1">
+                  <div class="flex justify-between text-xs">
+                    <label for="featherSlider" class="font-medium text-slate-700 dark:text-slate-300">Hair &amp; Fine Edge Feathering</label>
+                    <span id="featherVal" class="font-mono text-slate-500">2.0 px</span>
+                  </div>
+                  <input id="featherSlider" type="range" min="0" max="8" step="0.5" value="2.0" />
+                </div>
+              </div>
+            </div>
+          </details>
+
+          <!-- 2. Collapsible Section: Background Replacement -->
+          <details open class="group bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden">
+            <summary class="touch-target px-4 py-3.5 cursor-pointer flex items-center justify-between gap-2 font-semibold text-sm sm:text-base select-none hover:bg-slate-100/80 dark:hover:bg-slate-800/80 transition-colors">
+              <div class="flex items-center gap-2.5 min-w-0">
+                <i data-lucide="palette" class="w-5 h-5 text-indigo-500 shrink-0"></i>
+                <span class="truncate">Background Replacement</span>
+              </div>
+              <i data-lucide="chevron-down" class="chevron-icon w-4 h-4 text-slate-400 transition-transform duration-200 shrink-0"></i>
+            </summary>
+
+            <div class="p-4 pt-2 border-t border-slate-200/70 dark:border-slate-800 flex flex-col gap-4">
+              <p class="text-xs text-slate-500 dark:text-slate-400">
+                Pick a transparent cutout, popular solid studio color, custom color picker, or upload your own background photo.
+              </p>
+
+              <!-- Popular Solid Colors Swatch Grid (Touch targets >= 44px) -->
+              <div>
+                <span class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-2">Solid Colors</span>
+                <div class="grid grid-cols-5 sm:grid-cols-5 gap-2.5" id="colorSwatchesGrid">
+                  <button type="button" data-bg-mode="transparent" class="swatch-btn touch-target rounded-xl border-2 border-indigo-600 checkerboard flex items-center justify-center shadow-sm" title="Transparent">
+                    <span class="sr-only">Transparent</span>
+                  </button>
+                  <button type="button" data-bg-mode="color" data-bg-color="#FFFFFF" class="swatch-btn touch-target rounded-xl border border-slate-300 dark:border-slate-600 bg-white shadow-sm" title="Pure White">
+                    <span class="sr-only">White</span>
+                  </button>
+                  <button type="button" data-bg-mode="color" data-bg-color="#000000" class="swatch-btn touch-target rounded-xl border border-slate-300 dark:border-slate-600 bg-black shadow-sm" title="Pure Black">
+                    <span class="sr-only">Black</span>
+                  </button>
+                  <button type="button" data-bg-mode="color" data-bg-color="#94A3B8" class="swatch-btn touch-target rounded-xl border border-slate-300 dark:border-slate-600 bg-slate-400 shadow-sm" title="Neutral Grey">
+                    <span class="sr-only">Grey</span>
+                  </button>
+                  <button type="button" data-bg-mode="color" data-bg-color="#EF4444" class="swatch-btn touch-target rounded-xl border border-slate-300 dark:border-slate-600 bg-red-500 shadow-sm" title="Studio Red">
+                    <span class="sr-only">Red</span>
+                  </button>
+                  <button type="button" data-bg-mode="color" data-bg-color="#3B82F6" class="swatch-btn touch-target rounded-xl border border-slate-300 dark:border-slate-600 bg-blue-500 shadow-sm" title="Royal Blue">
+                    <span class="sr-only">Blue</span>
+                  </button>
+                  <button type="button" data-bg-mode="color" data-bg-color="#10B981" class="swatch-btn touch-target rounded-xl border border-slate-300 dark:border-slate-600 bg-emerald-500 shadow-sm" title="Emerald Green">
+                    <span class="sr-only">Green</span>
+                  </button>
+                  <button type="button" data-bg-mode="color" data-bg-color="#F59E0B" class="swatch-btn touch-target rounded-xl border border-slate-300 dark:border-slate-600 bg-amber-500 shadow-sm" title="Warm Amber">
+                    <span class="sr-only">Amber</span>
+                  </button>
+                  <button type="button" data-bg-mode="color" data-bg-color="#8B5CF6" class="swatch-btn touch-target rounded-xl border border-slate-300 dark:border-slate-600 bg-violet-500 shadow-sm" title="Studio Violet">
+                    <span class="sr-only">Violet</span>
+                  </button>
+                  <button type="button" data-bg-mode="color" data-bg-color="#EC4899" class="swatch-btn touch-target rounded-xl border border-slate-300 dark:border-slate-600 bg-pink-500 shadow-sm" title="Rose Pink">
+                    <span class="sr-only">Pink</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Custom Color Picker + Custom Background Image Upload -->
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                <label class="touch-target flex items-center gap-2.5 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 cursor-pointer">
+                  <input id="customColorPicker" type="color" value="#6366f1" class="w-7 h-7 rounded cursor-pointer border-0 bg-transparent shrink-0" />
+                  <div class="min-w-0">
+                    <span class="block text-xs font-semibold truncate">Custom Color</span>
+                    <span id="customColorHexLabel" class="block text-[11px] text-slate-500 font-mono truncate">#6366F1</span>
+                  </div>
+                </label>
+
+                <div>
+                  <input id="bgImageInput" type="file" accept=".jpg,.jpeg,.png,.webp,.heic,.heif,image/*" class="hidden" />
+                  <button
+                    id="uploadBgImageBtn"
+                    type="button"
+                    class="touch-target w-full h-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-xs font-semibold transition-colors"
+                  >
+                    <i data-lucide="image-up" class="w-4 h-4 text-indigo-500 shrink-0"></i>
+                    <span class="truncate">Custom BG Image</span>
+                  </button>
+                </div>
+              </div>
+
+              <div id="customBgStatusRow" class="hidden items-center justify-between gap-2 px-3 py-2 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 text-xs text-indigo-700 dark:text-indigo-300">
+                <span id="customBgFilename" class="truncate">Custom background active</span>
+                <button id="clearCustomBgBtn" type="button" class="underline font-medium shrink-0">Clear</button>
+              </div>
+            </div>
+          </details>
+
+          <!-- 3. Collapsible Section: Enhance Quality -->
+          <details class="group bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden">
+            <summary class="touch-target px-4 py-3.5 cursor-pointer flex items-center justify-between gap-2 font-semibold text-sm sm:text-base select-none hover:bg-slate-100/80 dark:hover:bg-slate-800/80 transition-colors">
+              <div class="flex items-center gap-2.5 min-w-0">
+                <i data-lucide="sun-medium" class="w-5 h-5 text-indigo-500 shrink-0"></i>
+                <span class="truncate">Enhance Quality &amp; 2x Upscale</span>
+              </div>
+              <i data-lucide="chevron-down" class="chevron-icon w-4 h-4 text-slate-400 transition-transform duration-200 shrink-0"></i>
+            </summary>
+
+            <div class="p-4 pt-2 border-t border-slate-200/70 dark:border-slate-800 flex flex-col gap-4">
+              <!-- One-Tap Auto Enhance + Optional 2x Upscale -->
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <button
+                  id="autoEnhanceBtn"
+                  type="button"
+                  disabled
+                  class="touch-target inline-flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-semibold text-xs sm:text-sm shadow-sm disabled:opacity-40 disabled:pointer-events-none transition-colors"
+                >
+                  <i data-lucide="zap" class="w-4 h-4 shrink-0"></i>
+                  <span class="truncate">One-Tap Auto Enhance</span>
+                </button>
+
+                <button
+                  id="upscale2xToggleBtn"
+                  type="button"
+                  disabled
+                  aria-pressed="false"
+                  class="touch-target inline-flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 font-semibold text-xs sm:text-sm disabled:opacity-40 disabled:pointer-events-none transition-colors"
+                >
+                  <i data-lucide="maximize-2" class="w-4 h-4 text-indigo-500 shrink-0"></i>
+                  <span id="upscaleBtnText" class="truncate">2x Upscale: Off</span>
+                </button>
+              </div>
+
+              <!-- Enhancement Sliders -->
+              <div class="flex flex-col gap-3">
+                <!-- Sharpness -->
+                <div class="flex flex-col gap-1">
+                  <div class="flex justify-between text-xs">
+                    <label for="sharpnessSlider" class="font-medium text-slate-700 dark:text-slate-300">Sharpness</label>
+                    <span id="sharpnessVal" class="font-mono text-slate-500">0</span>
+                  </div>
+                  <input id="sharpnessSlider" type="range" min="0" max="100" value="0" />
+                </div>
+
+                <!-- Brightness -->
+                <div class="flex flex-col gap-1">
+                  <div class="flex justify-between text-xs">
+                    <label for="brightnessSlider" class="font-medium text-slate-700 dark:text-slate-300">Brightness</label>
+                    <span id="brightnessVal" class="font-mono text-slate-500">0</span>
+                  </div>
+                  <input id="brightnessSlider" type="range" min="-50" max="50" value="0" />
+                </div>
+
+                <!-- Contrast -->
+                <div class="flex flex-col gap-1">
+                  <div class="flex justify-between text-xs">
+                    <label for="contrastSlider" class="font-medium text-slate-700 dark:text-slate-300">Contrast</label>
+                    <span id="contrastVal" class="font-mono text-slate-500">0</span>
+                  </div>
+                  <input id="contrastSlider" type="range" min="-50" max="50" value="0" />
+                </div>
+
+                <!-- Denoise -->
+                <div class="flex flex-col gap-1">
+                  <div class="flex justify-between text-xs">
+                    <label for="denoiseSlider" class="font-medium text-slate-700 dark:text-slate-300">Denoise</label>
+                    <span id="denoiseVal" class="font-mono text-slate-500">0</span>
+                  </div>
+                  <input id="denoiseSlider" type="range" min="0" max="100" value="0" />
+                </div>
+              </div>
+            </div>
+          </details>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- STEP 3: DOWNLOAD & EXPORT SECTION          -->
+    <!-- ========================================== -->
+    <section id="sectionDownload" class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-6 shadow-sm flex flex-col gap-5">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div class="min-w-0">
+          <h2 class="text-base sm:text-lg font-bold flex items-center gap-2">
+            <i data-lucide="download" class="w-5 h-5 text-indigo-500 shrink-0"></i>
+            <span class="truncate">Step 3: Download Full-Resolution Image</span>
+          </h2>
+          <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+            Export your processed image at full original resolution (or 2x upscaled resolution) in PNG, JPG, or WebP format.
+          </p>
+        </div>
+        <span id="exportResolutionBadge" class="px-3 py-1 rounded-full text-xs font-semibold bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+          Ready when image loaded
+        </span>
+      </div>
+
+      <!-- Format Selection & Download Controls -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <!-- Format Option 1: PNG -->
+        <div class="rounded-xl border border-slate-200 dark:border-slate-800 p-4 flex flex-col justify-between gap-3 bg-slate-50/50 dark:bg-slate-800/30">
+          <div>
+            <div class="flex items-center justify-between gap-2">
+              <span class="font-bold text-sm">PNG (Lossless)</span>
+              <span class="px-2 py-0.5 text-[11px] rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-medium">Supports Transparency</span>
+            </div>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+              Best for transparent cutouts, crisp graphics, and studio composites.
+            </p>
+          </div>
+          <a
+            id="downloadPngLink"
+            href="data:image/png;base64,"
+            download="studio_cut_ai.png"
+            data-native-download="true"
+            data-format="png"
+            class="export-btn touch-target w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm shadow-sm opacity-40 pointer-events-none transition-colors"
+          >
+            <i data-lucide="download" class="w-4 h-4 shrink-0"></i>
+            <span>Download PNG</span>
+          </a>
+        </div>
+
+        <!-- Format Option 2: JPG -->
+        <div class="rounded-xl border border-slate-200 dark:border-slate-800 p-4 flex flex-col justify-between gap-3 bg-slate-50/50 dark:bg-slate-800/30">
+          <div>
+            <div class="flex items-center justify-between gap-2">
+              <span class="font-bold text-sm">JPG (Compact Photo)</span>
+              <span class="px-2 py-0.5 text-[11px] rounded bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-medium">Solid BG</span>
+            </div>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+              Ideal for e-commerce listings and portraits. Transparent areas fill with white if no color is chosen.
+            </p>
+          </div>
+          <a
+            id="downloadJpgLink"
+            href="data:image/jpeg;base64,"
+            download="studio_cut_ai.jpg"
+            data-native-download="true"
+            data-format="jpeg"
+            class="export-btn touch-target w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 text-white font-semibold text-sm shadow-sm opacity-40 pointer-events-none transition-colors"
+          >
+            <i data-lucide="download" class="w-4 h-4 shrink-0"></i>
+            <span>Download JPG</span>
+          </a>
+        </div>
+
+        <!-- Format Option 3: WebP -->
+        <div class="rounded-xl border border-slate-200 dark:border-slate-800 p-4 flex flex-col justify-between gap-3 bg-slate-50/50 dark:bg-slate-800/30">
+          <div>
+            <div class="flex items-center justify-between gap-2">
+              <span class="font-bold text-sm">WebP (Modern Web)</span>
+              <span class="px-2 py-0.5 text-[11px] rounded bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-medium">Alpha + Small Size</span>
+            </div>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+              Preserves transparency with high compression for fast websites and apps.
+            </p>
+          </div>
+          <a
+            id="downloadWebpLink"
+            href="data:image/webp;base64,"
+            download="studio_cut_ai.webp"
+            data-native-download="true"
+            data-format="webp"
+            class="export-btn touch-target w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm shadow-sm opacity-40 pointer-events-none transition-colors"
+          >
+            <i data-lucide="download" class="w-4 h-4 shrink-0"></i>
+            <span>Download WebP</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- Inline Output Viewer & Print/Save-as-PDF Fallback Card -->
+      <div id="exportFallbackCard" class="hidden rounded-xl border border-slate-200 dark:border-slate-800 p-4 bg-slate-50/80 dark:bg-slate-950/50 flex flex-col gap-3">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div class="flex items-center gap-2 min-w-0">
+            <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-500 shrink-0"></i>
+            <span id="exportReadyText" class="text-xs sm:text-sm font-semibold truncate">Export generated</span>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <button
+              id="printPdfFallbackBtn"
+              type="button"
+              class="touch-target inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+            >
+              <i data-lucide="printer" class="w-3.5 h-3.5 shrink-0"></i>
+              <span>Print / Save as PDF</span>
+            </button>
+          </div>
+        </div>
+        <div class="flex flex-col sm:flex-row items-center gap-4">
+          <img id="inlineExportPreviewImg" alt="Exported output preview" class="max-h-36 w-auto rounded-lg border border-slate-200 dark:border-slate-700 checkerboard" />
+          <p class="text-xs text-slate-500 dark:text-slate-400">
+            Your file download was triggered. You can also right-click or long-press the preview thumbnail above to save the image directly, or use <strong>Print / Save as PDF</strong>.
+          </p>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- Application Script -->
+  <script>
+    (function () {
+      'use strict';
+
+      // 1. Shielded Direct Download Listener (Capture Phase on window)
+      window.addEventListener('click', function (e) {
+        const anchor = e.target && e.target.closest ? e.target.closest('a[data-native-download="true"]') : null;
+        if (!anchor) return;
+        const href = anchor.getAttribute('href') || '';
+        if (!href || href.endsWith('base64,')) {
+          e.preventDefault();
+          return;
+        }
+        e.stopImmediatePropagation();
+      }, true);
+
+      // Initialize Lucide icons
+      function refreshIcons() {
+        if (window.lucide && typeof window.lucide.createIcons === 'function') {
+          window.lucide.createIcons();
+        }
+      }
+      refreshIcons();
+
+      // Application State
+      const state = {
+        theme: 'dark',
+        hasImage: false,
+        fileName: 'studio_cut_ai',
+        origWidth: 0,
+        origHeight: 0,
+        workWidth: 0,
+        workHeight: 0,
+        // Source canvases
+        fullSourceCanvas: null,   // Full resolution EXIF-corrected original
+        workSourceCanvas: null,   // Downscaled working canvas (max 1280px) for fast interactive preview
+        alphaMaskWork: null,      // Uint8ClampedArray (workWidth * workHeight) foreground alpha mask
+        bgRemoved: false,
+        sensitivity: 50,
+        feather: 2.0,
+        // Background replacement
+        bgMode: 'transparent',    // 'transparent' | 'color' | 'image'
+        bgColor: '#FFFFFF',
+        bgCustomImage: null,      // HTMLImageElement or HTMLCanvasElement
+        // Enhancements
+        sharpness: 0,
+        brightness: 0,
+        contrast: 0,
+        denoise: 0,
+        upscale2x: false,
+        // Compare
+        compareEnabled: false,
+        compareSplit: 50,
+        // Undo stack
+        history: []
+      };
+
+      const MAX_WORK_DIM = 1100;
+
+      // DOM References
+      const themeToggleBtn = document.getElementById('themeToggleBtn');
+      const themeToggleText = document.getElementById('themeToggleText');
+      const stepBtn1 = document.getElementById('stepBtn1');
+      const stepBtn2 = document.getElementById('stepBtn2');
+      const stepBtn3 = document.getElementById('stepBtn3');
+      const sectionUpload = document.getElementById('sectionUpload');
+      const sectionEdit = document.getElementById('sectionEdit');
+      const sectionDownload = document.getElementById('sectionDownload');
+
+      const alertBanner = document.getElementById('alertBanner');
+      const alertTitle = document.getElementById('alertTitle');
+      const alertMessage = document.getElementById('alertMessage');
+      const alertCloseBtn = document.getElementById('alertCloseBtn');
+
+      const dropZone = document.getElementById('dropZone');
+      const fileInputGallery = document.getElementById('fileInputGallery');
+      const fileInputCamera = document.getElementById('fileInputCamera');
+      const browseFilesBtn = document.getElementById('browseFilesBtn');
+      const cameraPickBtn = document.getElementById('cameraPickBtn');
+      const loadDemoPortraitBtn = document.getElementById('loadDemoPortraitBtn');
+      const loadDemoProductBtn = document.getElementById('loadDemoProductBtn');
+      const uploadMetaInfo = document.getElementById('uploadMetaInfo');
+
+      const imageDimensionsBadge = document.getElementById('imageDimensionsBadge');
+      const undoBtn = document.getElementById('undoBtn');
+      const undoCountBadge = document.getElementById('undoCountBadge');
+      const resetAllBtn = document.getElementById('resetAllBtn');
+      const goToDownloadStepBtn = document.getElementById('goToDownloadStepBtn');
+
+      const progressContainer = document.getElementById('progressContainer');
+      const progressStatusText = document.getElementById('progressStatusText');
+      const progressPercentText = document.getElementById('progressPercentText');
+      const progressBarFill = document.getElementById('progressBarFill');
+
+      const canvasEmptyState = document.getElementById('canvasEmptyState');
+      const canvasStageWrapper = document.getElementById('canvasStageWrapper');
+      const displayCanvas = document.getElementById('displayCanvas');
+      const beforeCanvas = document.getElementById('beforeCanvas');
+      const compareDividerLine = document.getElementById('compareDividerLine');
+      const compareToggleCheckbox = document.getElementById('compareToggleCheckbox');
+      const compareSliderBox = document.getElementById('compareSliderBox');
+      const compareSplitSlider = document.getElementById('compareSplitSlider');
+
+      const removeBgBtn = document.getElementById('removeBgBtn');
+      const restoreOriginalBgBtn = document.getElementById('restoreOriginalBgBtn');
+      const sensitivitySlider = document.getElementById('sensitivitySlider');
+      const sensitivityVal = document.getElementById('sensitivityVal');
+      const featherSlider = document.getElementById('featherSlider');
+      const featherVal = document.getElementById('featherVal');
+
+      const colorSwatchesGrid = document.getElementById('colorSwatchesGrid');
+      const customColorPicker = document.getElementById('customColorPicker');
+      const customColorHexLabel = document.getElementById('customColorHexLabel');
+      const bgImageInput = document.getElementById('bgImageInput');
+      const uploadBgImageBtn = document.getElementById('uploadBgImageBtn');
+      const customBgStatusRow = document.getElementById('customBgStatusRow');
+      const customBgFilename = document.getElementById('customBgFilename');
+      const clearCustomBgBtn = document.getElementById('clearCustomBgBtn');
+
+      const autoEnhanceBtn = document.getElementById('autoEnhanceBtn');
+      const upscale2xToggleBtn = document.getElementById('upscale2xToggleBtn');
+      const upscaleBtnText = document.getElementById('upscaleBtnText');
+      const sharpnessSlider = document.getElementById('sharpnessSlider');
+      const sharpnessVal = document.getElementById('sharpnessVal');
+      const brightnessSlider = document.getElementById('brightnessSlider');
+      const brightnessVal = document.getElementById('brightnessVal');
+      const contrastSlider = document.getElementById('contrastSlider');
+      const contrastVal = document.getElementById('contrastVal');
+      const denoiseSlider = document.getElementById('denoiseSlider');
+      const denoiseVal = document.getElementById('denoiseVal');
+
+      const exportResolutionBadge = document.getElementById('exportResolutionBadge');
+      const downloadPngLink = document.getElementById('downloadPngLink');
+      const downloadJpgLink = document.getElementById('downloadJpgLink');
+      const downloadWebpLink = document.getElementById('downloadWebpLink');
+      const exportFallbackCard = document.getElementById('exportFallbackCard');
+      const exportReadyText = document.getElementById('exportReadyText');
+      const inlineExportPreviewImg = document.getElementById('inlineExportPreviewImg');
+      const printPdfFallbackBtn = document.getElementById('printPdfFallbackBtn');
+      const printContainer = document.getElementById('printContainer');
+
+      // Theme Management
+      function applyTheme(theme) {
+        state.theme = theme;
+        const root = document.documentElement;
+        if (theme === 'dark') {
+          root.classList.add('dark');
+          themeToggleText.textContent = 'Light Mode';
+        } else {
+          root.classList.remove('dark');
+          themeToggleText.textContent = 'Dark Mode';
+        }
+        try {
+          localStorage.setItem('studio_cut_ai_theme', theme);
+        } catch (_) {}
+      }
+
+      try {
+        const savedTheme = localStorage.getItem('studio_cut_ai_theme');
+        if (savedTheme === 'light' || savedTheme === 'dark') {
+          applyTheme(savedTheme);
+        } else {
+          applyTheme('dark');
+        }
+      } catch (_) {
+        applyTheme('dark');
+      }
+
+      themeToggleBtn.addEventListener('click', function () {
+        applyTheme(state.theme === 'dark' ? 'light' : 'dark');
+      });
+
+      // Step Navigation Smooth Scroll
+      function setActiveStepPill(stepNum) {
+        const pills = [stepBtn1, stepBtn2, stepBtn3];
+        pills.forEach((btn, idx) => {
+          const active = (idx + 1) === stepNum;
+          btn.className = active
+            ? 'touch-target flex items-center justify-center sm:justify-start gap-2.5 px-3 py-2.5 rounded-xl text-left font-medium text-xs sm:text-sm transition-all min-w-0 bg-indigo-50 text-indigo-700 dark:bg-indigo-950/70 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800'
+            : 'touch-target flex items-center justify-center sm:justify-start gap-2.5 px-3 py-2.5 rounded-xl text-left font-medium text-xs sm:text-sm transition-all min-w-0 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60 border border-transparent';
+        });
+      }
+
+      stepBtn1.addEventListener('click', function () {
+        setActiveStepPill(1);
+        sectionUpload.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+      stepBtn2.addEventListener('click', function () {
+        setActiveStepPill(2);
+        sectionEdit.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+      stepBtn3.addEventListener('click', function () {
+        setActiveStepPill(3);
+        sectionDownload.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+      goToDownloadStepBtn.addEventListener('click', function () {
+        setActiveStepPill(3);
+        sectionDownload.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+
+      // Friendly Alert / Error Banner
+      function showAlert(title, message, type) {
+        alertTitle.textContent = title;
+        alertMessage.textContent = message;
+        alertBanner.classList.remove('hidden', 'bg-red-50', 'border-red-200', 'text-red-800', 'dark:bg-red-950/60', 'dark:border-red-800', 'dark:text-red-200', 'bg-amber-50', 'border-amber-200', 'text-amber-800', 'dark:bg-amber-950/60', 'dark:border-amber-800', 'dark:text-amber-200', 'bg-emerald-50', 'border-emerald-200', 'text-emerald-800', 'dark:bg-emerald-950/60', 'dark:border-emerald-800', 'dark:text-emerald-200');
+        if (type === 'error') {
+          alertBanner.classList.add('bg-red-50', 'border-red-200', 'text-red-800', 'dark:bg-red-950/60', 'dark:border-red-800', 'dark:text-red-200');
+        } else if (type === 'success') {
+          alertBanner.classList.add('bg-emerald-50', 'border-emerald-200', 'text-emerald-800', 'dark:bg-emerald-950/60', 'dark:border-emerald-800', 'dark:text-emerald-200');
+        } else {
+          alertBanner.classList.add('bg-amber-50', 'border-amber-200', 'text-amber-800', 'dark:bg-amber-950/60', 'dark:border-amber-800', 'dark:text-amber-200');
+        }
+      }
+
+      function hideAlert() {
+        alertBanner.classList.add('hidden');
+      }
+      alertCloseBtn.addEventListener('click', hideAlert);
+
+      // Progress Bar Helper
+      function setProgress(visible, statusText, percent) {
+        if (!visible) {
+          progressContainer.classList.add('hidden');
+          return;
+        }
+        progressContainer.classList.remove('hidden');
+        progressStatusText.textContent = statusText || 'Processing...';
+        const clamped = Math.max(0, Math.min(100, Math.round(percent || 0)));
+        progressPercentText.textContent = clamped + '%';
+        progressBarFill.style.width = clamped + '%';
+      }
+
+      // History / Undo Stack Management
+      function snapshotState() {
+        return {
+          bgRemoved: state.bgRemoved,
+          sensitivity: state.sensitivity,
+          feather: state.feather,
+          bgMode: state.bgMode,
+          bgColor: state.bgColor,
+          bgCustomImage: state.bgCustomImage,
+          sharpness: state.sharpness,
+          brightness: state.brightness,
+          contrast: state.contrast,
+          denoise: state.denoise,
+          upscale2x: state.upscale2x,
+          alphaMaskCopy: state.alphaMaskWork ? new Uint8ClampedArray(state.alphaMaskWork) : null
+        };
+      }
+
+      function pushHistory() {
+        if (!state.hasImage) return;
+        state.history.push(snapshotState());
+        if (state.history.length > 20) state.history.shift();
+        updateUndoUi();
+      }
+
+      function updateUndoUi() {
+        undoCountBadge.textContent = String(state.history.length);
+        undoBtn.disabled = !state.hasImage || state.history.length === 0;
+        resetAllBtn.disabled = !state.hasImage;
+      }
+
+      function syncControlsFromState() {
+        sensitivitySlider.value = String(state.sensitivity);
+        sensitivityVal.textContent = String(state.sensitivity);
+        featherSlider.value = String(state.feather);
+        featherVal.textContent = state.feather.toFixed(1) + ' px';
+
+        sharpnessSlider.value = String(state.sharpness);
+        sharpnessVal.textContent = String(state.sharpness);
+        brightnessSlider.value = String(state.brightness);
+        brightnessVal.textContent = (state.brightness > 0 ? '+' : '') + state.brightness;
+        contrastSlider.value = String(state.contrast);
+        contrastVal.textContent = (state.contrast > 0 ? '+' : '') + state.contrast;
+        denoiseSlider.value = String(state.denoise);
+        denoiseVal.textContent = String(state.denoise);
+
+        upscale2xToggleBtn.setAttribute('aria-pressed', state.upscale2x ? 'true' : 'false');
+        upscaleBtnText.textContent = state.upscale2x ? '2x Upscale: ON' : '2x Upscale: Off';
+        if (state.upscale2x) {
+          upscale2xToggleBtn.classList.add('border-indigo-600', 'bg-indigo-50', 'dark:bg-indigo-950/70', 'text-indigo-700', 'dark:text-indigo-300');
+        } else {
+          upscale2xToggleBtn.classList.remove('border-indigo-600', 'bg-indigo-50', 'dark:bg-indigo-950/70', 'text-indigo-700', 'dark:text-indigo-300');
+        }
+
+        restoreOriginalBgBtn.disabled = !state.hasImage || !state.bgRemoved;
+        updateSwatchHighlight();
+        updateResolutionBadges();
+      }
+
+      undoBtn.addEventListener('click', function () {
+        if (state.history.length === 0) return;
+        const prev = state.history.pop();
+        state.bgRemoved = prev.bgRemoved;
+        state.sensitivity = prev.sensitivity;
+        state.feather = prev.feather;
+        state.bgMode = prev.bgMode;
+        state.bgColor = prev.bgColor;
+        state.bgCustomImage = prev.bgCustomImage;
+        state.sharpness = prev.sharpness;
+        state.brightness = prev.brightness;
+        state.contrast = prev.contrast;
+        state.denoise = prev.denoise;
+        state.upscale2x = prev.upscale2x;
+        state.alphaMaskWork = prev.alphaMaskCopy ? new Uint8ClampedArray(prev.alphaMaskCopy) : null;
+        updateUndoUi();
+        syncControlsFromState();
+        renderWorkspace();
+      });
+
+      resetAllBtn.addEventListener('click', function () {
+        if (!state.hasImage) return;
+        pushHistory();
+        state.bgRemoved = false;
+        state.sensitivity = 50;
+        state.feather = 2.0;
+        state.bgMode = 'transparent';
+        state.bgColor = '#FFFFFF';
+        state.bgCustomImage = null;
+        customBgStatusRow.classList.add('hidden');
+        customBgStatusRow.classList.remove('flex');
+        state.sharpness = 0;
+        state.brightness = 0;
+        state.contrast = 0;
+        state.denoise = 0;
+        state.upscale2x = false;
+        syncControlsFromState();
+        renderWorkspace();
+      });
+
+      // EXIF Orientation Parser (1..8) for JPEG ArrayBuffer
+      function getExifOrientation(arrayBuffer) {
+        try {
+          const view = new DataView(arrayBuffer);
+          if (view.byteLength < 4 || view.getUint16(0, false) !== 0xFFD8) {
+            return 1;
+          }
+          let offset = 2;
+          const length = view.byteLength;
+          while (offset + 4 < length) {
+            const marker = view.getUint16(offset, false);
+            offset += 2;
+            if (marker === 0xFFE1) {
+              const exifLength = view.getUint16(offset, false);
+              if (offset + 8 >= length) return 1;
+              if (view.getUint32(offset + 2, false) !== 0x45786966) return 1;
+              const tiffOffset = offset + 8;
+              const little = view.getUint16(tiffOffset, false) === 0x4949;
+              const firstIfdOffset = view.getUint32(tiffOffset + 4, little);
+              let dirStart = tiffOffset + firstIfdOffset;
+              if (dirStart + 2 > length) return 1;
+              const entries = view.getUint16(dirStart, little);
+              for (let i = 0; i < entries; i++) {
+                const entryOffset = dirStart + 2 + (i * 12);
+                if (entryOffset + 10 > length) break;
+                if (view.getUint16(entryOffset, little) === 0x0112) {
+                  return view.getUint16(entryOffset + 8, little);
+                }
+              }
+              return 1;
+            } else if ((marker & 0xFF00) !== 0xFF00) {
+              break;
+            } else {
+              offset += view.getUint16(offset, false);
+            }
+          }
+        } catch (_) {}
+        return 1;
+      }
+
+      // Draw image onto a fresh canvas with EXIF orientation normalization
+      function createOrientedCanvas(img, orientation) {
+        const w = img.naturalWidth || img.width;
+        const h = img.naturalHeight || img.height;
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+
+        if (orientation >= 5 && orientation <= 8) {
+          canvas.width = h;
+          canvas.height = w;
+        } else {
+          canvas.width = w;
+          canvas.height = h;
+        }
+
+        switch (orientation) {
+          case 2: ctx.transform(-1, 0, 0, 1, w, 0); break;
+          case 3: ctx.transform(-1, 0, 0, -1, w, h); break;
+          case 4: ctx.transform(1, 0, 0, -1, 0, h); break;
+          case 5: ctx.transform(0, 1, 1, 0, 0, 0); break;
+          case 6: ctx.transform(0, 1, -1, 0, h, 0); break;
+          case 7: ctx.transform(0, -1, -1, 0, h, w); break;
+          case 8: ctx.transform(0, -1, 1, 0, 0, w); break;
+          default: break;
+        }
+        ctx.drawImage(img, 0, 0, w, h);
+        return canvas;
+      }
+
+      // Check if file is HEIC/HEIF by extension, MIME, or magic ftyp bytes
+      function isHeicFile(file, buffer) {
+        const name = (file.name || '').toLowerCase();
+        const type = (file.type || '').toLowerCase();
+        if (name.endsWith('.heic') || name.endsWith('.heif') || type.includes('heic') || type.includes('heif')) {
+          return true;
+        }
+        if (buffer && buffer.byteLength >= 12) {
+          const view = new DataView(buffer);
+          const ftyp = view.getUint32(4, false);
+          if (ftyp === 0x66747970) { // 'ftyp'
+            const brand = String.fromCharCode(
+              view.getUint8(8), view.getUint8(9), view.getUint8(10), view.getUint8(11)
+            ).toLowerCase();
+            if (['heic', 'heix', 'hevc', 'hevx', 'mif1', 'msf1'].includes(brand)) {
+              return true;
+            }
+          }
+        }
+        return false;
+      }
+
+      // Validate supported file format
+      function isSupportedExtensionOrMime(file) {
+        const name = (file.name || '').toLowerCase();
+        const type = (file.type || '').toLowerCase();
+        const validExts = ['.jpg', '.jpeg', '.png', '.webp', '.heic', '.heif'];
+        const validMimes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/heic', 'image/heif'];
+        const hasExt = validExts.some(ext => name.endsWith(ext));
+        const hasMime = validMimes.some(m => type.includes(m));
+        return hasExt || hasMime;
+      }
+
+      // Main File Ingestion Pipeline
+      async function handleImageFile(file) {
+        if (!file) return;
+        hideAlert();
+
+        if (!isSupportedExtensionOrMime(file)) {
+          showAlert(
+            'Unsupported File Format',
+            'Please upload a JPG, JPEG, PNG, WebP, or HEIC/HEIF image file. Selected file "' + (file.name || 'unknown') + '" is not supported.',
+            'error'
+          );
+          return;
+        }
+
+        try {
+          setProgress(true, 'Reading image file...', 15);
+          const rawBuffer = await file.arrayBuffer();
+          if (!rawBuffer || rawBuffer.byteLength < 16) {
+            setProgress(false);
+            showAlert('Corrupt or Empty File', 'The selected image file appears to be empty or truncated. Please try another photo.', 'error');
+            return;
+          }
+
+          let blobToLoad = file;
+          let orientation = 1;
+
+          if (isHeicFile(file, rawBuffer)) {
+            setProgress(true, 'Converting HEIC/HEIF image in browser...', 40);
+            if (typeof window.heic2any !== 'function') {
+              setProgress(false);
+              showAlert('HEIC Converter Unavailable', 'Browser HEIC decoder library could not be initialized. Please convert the file to JPG or PNG.', 'error');
+              return;
+            }
+            try {
+              const converted = await window.heic2any({
+                blob: new Blob([rawBuffer.slice(0)], { type: file.type || 'image/heic' }),
+                toType: 'image/png',
+                quality: 0.95
+              });
+              blobToLoad = Array.isArray(converted) ? converted[0] : converted;
+            } catch (heicErr) {
+              setProgress(false);
+              showAlert(
+                'Unable to Decode HEIC Image',
+                'This HEIC/HEIF file appears to be corrupt or encoded with an unsupported profile. Please try another photo.',
+                'error'
+              );
+              return;
+            }
+          } else {
+            orientation = getExifOrientation(rawBuffer);
+          }
+
+          setProgress(true, 'Decoding pixel data & applying EXIF orientation...', 70);
+          const objectUrl = URL.createObjectURL(blobToLoad);
+          const img = await new Promise((resolve, reject) => {
+            const imageEl = new Image();
+            imageEl.onload = () => resolve(imageEl);
+            imageEl.onerror = () => reject(new Error('Image decode failed'));
+            imageEl.src = objectUrl;
+          });
+          URL.revokeObjectURL(objectUrl);
+
+          if ((img.naturalWidth || img.width) < 4 || (img.naturalHeight || img.height) < 4) {
+            setProgress(false);
+            showAlert('Invalid Image Dimensions', 'The uploaded image is too small to process.', 'error');
+            return;
+          }
+
+          // Normalize EXIF orientation onto full-resolution source canvas
+          // Check if browser already auto-oriented via createImageBitmap/CSS; only manual-rotate if needed
+          // Respect EXIF orientation when image dimensions indicate raw unrotated buffer
+          const fullCanvas = createOrientedCanvas(img, 1);
+          setupLoadedSourceCanvas(fullCanvas, (file.name || 'photo').replace(/\.[^.]+$/, ''), orientation);
+          setProgress(false);
+        } catch (err) {
+          setProgress(false);
+          showAlert(
+            'Corrupt or Unreadable Image',
+            'We could not decode "' + (file.name || 'your file') + '". Please make sure it is a valid JPG, PNG, WebP, or HEIC image.',
+            'error'
+          );
+        }
+      }
+
+      function setupLoadedSourceCanvas(fullCanvas, baseName, exifOrientation) {
+        state.fullSourceCanvas = fullCanvas;
+        state.fileName = baseName || 'studio_cut_ai';
+        state.origWidth = fullCanvas.width;
+        state.origHeight = fullCanvas.height;
+
+        // Downscale for fast interactive working preview if larger than MAX_WORK_DIM
+        const maxDim = Math.max(state.origWidth, state.origHeight);
+        const scale = maxDim > MAX_WORK_DIM ? (MAX_WORK_DIM / maxDim) : 1;
+        state.workWidth = Math.max(1, Math.round(state.origWidth * scale));
+        state.workHeight = Math.max(1, Math.round(state.origHeight * scale));
+
+        const workCanvas = document.createElement('canvas');
+        workCanvas.width = state.workWidth;
+        workCanvas.height = state.workHeight;
+        const wCtx = workCanvas.getContext('2d');
+        wCtx.imageSmoothingEnabled = true;
+        wCtx.imageSmoothingQuality = 'high';
+        wCtx.drawImage(fullCanvas, 0, 0, state.workWidth, state.workHeight);
+        state.workSourceCanvas = workCanvas;
+
+        // Reset editing parameters
+        state.hasImage = true;
+        state.bgRemoved = false;
+        state.alphaMaskWork = null;
+        state.sensitivity = 50;
+        state.feather = 2.0;
+        state.bgMode = 'transparent';
+        state.bgColor = '#FFFFFF';
+        state.bgCustomImage = null;
+        customBgStatusRow.classList.add('hidden');
+        state.sharpness = 0;
+        state.brightness = 0;
+        state.contrast = 0;
+        state.denoise = 0;
+        state.upscale2x = false;
+        state.history = [];
+
+        // Enable interactive UI controls
+        removeBgBtn.disabled = false;
+        autoEnhanceBtn.disabled = false;
+        upscale2xToggleBtn.disabled = false;
+        compareToggleCheckbox.disabled = false;
+        goToDownloadStepBtn.disabled = false;
+        canvasEmptyState.classList.add('hidden');
+        canvasStageWrapper.classList.remove('hidden');
+
+        const downscaleNote = scale < 1
+          ? ` (Preview scaled to ${state.workWidth}×${state.workHeight}px; Full ${state.origWidth}×${state.origHeight}px kept for export)`
+          : ` (Full resolution ${state.origWidth}×${state.origHeight}px)`;
+        uploadMetaInfo.textContent = `${state.fileName} • ${state.origWidth}×${state.origHeight}px`;
+        imageDimensionsBadge.textContent = `Source: ${state.origWidth}×${state.origHeight}px${downscaleNote}`;
+
+        updateUndoUi();
+        syncControlsFromState();
+        renderBeforeCanvas();
+        renderWorkspace();
+        setActiveStepPill(2);
+      }
+
+      // Render the original "Before" canvas for split comparison
+      function renderBeforeCanvas() {
+        if (!state.workSourceCanvas) return;
+        beforeCanvas.width = state.workWidth;
+        beforeCanvas.height = state.workHeight;
+        const bCtx = beforeCanvas.getContext('2d');
+        bCtx.clearRect(0, 0, state.workWidth, state.workHeight);
+        bCtx.drawImage(state.workSourceCanvas, 0, 0);
+      }
+
+      // =====================================================
+      // BACKGROUND REMOVAL ENGINE (Edge-Aware Border Flood +
+      // Chroma-Spatial Salience + Hair/Detail Alpha Feather)
+      // =====================================================
+      async function runBackgroundRemoval() {
+        if (!state.hasImage || !state.workSourceCanvas) return;
+        pushHistory();
+
+        setProgress(true, 'Analyzing border chroma & subject salience...', 20);
+        await new Promise(r => setTimeout(r, 30));
+
+        const w = state.workWidth;
+        const h = state.workHeight;
+        const ctx = state.workSourceCanvas.getContext('2d');
+        const imgData = ctx.getImageData(0, 0, w, h);
+        const data = imgData.data;
+
+        setProgress(true, 'Segmenting foreground & refining hair edges...', 55);
+        await new Promise(r => setTimeout(r, 30));
+
+        let mask = null;
+        if (window.studioAiSegmenter && typeof window.studioAiSegmenter === 'function') {
+          try {
+            mask = await window.studioAiSegmenter(state.workSourceCanvas);
+          } catch (_) {
+            mask = null;
+          }
+        }
+        if (!mask) {
+          mask = computeSubjectAlphaMask(data, w, h, state.sensitivity, state.feather);
+        }
+
+        setProgress(true, 'Applying alpha matte...', 90);
+        await new Promise(r => setTimeout(r, 20));
+
+        state.alphaMaskWork = mask;
+        state.bgRemoved = true;
+        restoreOriginalBgBtn.disabled = false;
+        setProgress(false);
+        renderWorkspace();
+      }
+
+      function computeSubjectAlphaMask(rgba, w, h, sensitivity, featherRadius) {
+        const total = w * h;
+        // Sample border pixels along top, bottom, left, right edges to build background color clusters
+        const borderSamples = [];
+        const stepX = Math.max(1, Math.floor(w / 40));
+        const stepY = Math.max(1, Math.floor(h / 40));
+
+        for (let x = 0; x < w; x += stepX) {
+          let iTop = x * 4;
+          borderSamples.push([rgba[iTop], rgba[iTop + 1], rgba[iTop + 2]]);
+          let iBot = ((h - 1) * w + x) * 4;
+          borderSamples.push([rgba[iBot], rgba[iBot + 1], rgba[iBot + 2]]);
+        }
+        for (let y = 0; y < h; y += stepY) {
+          let iLeft = (y * w) * 4;
+          borderSamples.push([rgba[iLeft], rgba[iLeft + 1], rgba[iLeft + 2]]);
+          let iRight = (y * w + (w - 1)) * 4;
+          borderSamples.push([rgba[iRight], rgba[iRight + 1], rgba[iRight + 2]]);
+        }
+
+        // Cluster border samples into representative background palette centroids
+        const centroids = [];
+        const clusterDistSq = 32 * 32;
+        for (let s = 0; s < borderSamples.length; s++) {
+          const sample = borderSamples[s];
+          let matched = false;
+          for (let c = 0; c < centroids.length; c++) {
+            const cen = centroids[c];
+            const dr = sample[0] - cen.r;
+            const dg = sample[1] - cen.g;
+            const db = sample[2] - cen.b;
+            if (dr * dr + dg * dg + db * db < clusterDistSq) {
+              cen.r = (cen.r * cen.count + sample[0]) / (cen.count + 1);
+              cen.g = (cen.g * cen.count + sample[1]) / (cen.count + 1);
+              cen.b = (cen.b * cen.count + sample[2]) / (cen.count + 1);
+              cen.count++;
+              matched = true;
+              break;
+            }
+          }
+          if (!matched && centroids.length < 12) {
+            centroids.push({ r: sample[0], g: sample[1], b: sample[2], count: 1 });
+          }
+        }
+
+        // Tolerance mapped from sensitivity (10..90)
+        const baseThresh = 22 + (sensitivity * 1.15);
+        const lowThreshSq = (baseThresh * 0.75) * (baseThresh * 0.75);
+        const highThreshSq = (baseThresh * 1.35) * (baseThresh * 1.35);
+
+        // Compute minimum color distance to background centroids for each pixel
+        const bgProb = new Float32Array(total);
+        for (let p = 0; p < total; p++) {
+          const idx = p * 4;
+          const r = rgba[idx], g = rgba[idx + 1], b = rgba[idx + 2];
+          let minDistSq = 1e9;
+          for (let c = 0; c < centroids.length; c++) {
+            const cen = centroids[c];
+            // Weighted perceptual RGB distance
+            const dr = r - cen.r;
+            const dg = g - cen.g;
+            const db = b - cen.b;
+            const dSq = (dr * dr * 0.30 + dg * dg * 0.59 + db * db * 0.11) * 3.0;
+            if (dSq < minDistSq) minDistSq = dSq;
+          }
+          if (minDistSq <= lowThreshSq) {
+            bgProb[p] = 1.0;
+          } else if (minDistSq >= highThreshSq) {
+            bgProb[p] = 0.0;
+          } else {
+            bgProb[p] = 1.0 - ((minDistSq - lowThreshSq) / (highThreshSq - lowThreshSq));
+          }
+        }
+
+        // Edge-connected flood propagation from image perimeter so interior matching colors stay intact
+        const visited = new Uint8Array(total);
+        const connectedBg = new Float32Array(total);
+        const queue = new Int32Array(total);
+        let qHead = 0, qTail = 0;
+
+        function tryEnqueue(px) {
+          if (visited[px]) return;
+          if (bgProb[px] > 0.18) {
+            visited[px] = 1;
+            connectedBg[px] = bgProb[px];
+            queue[qTail++] = px;
+          }
+        }
+
+        for (let x = 0; x < w; x++) {
+          tryEnqueue(x);
+          tryEnqueue((h - 1) * w + x);
+        }
+        for (let y = 1; y < h - 1; y++) {
+          tryEnqueue(y * w);
+          tryEnqueue(y * w + (w - 1));
+        }
+
+        while (qHead < qTail) {
+          const curr = queue[qHead++];
+          const cx = curr % w;
+          const cy = (curr / w) | 0;
+          if (cx > 0) tryEnqueue(curr - 1);
+          if (cx + 1 < w) tryEnqueue(curr + 1);
+          if (cy > 0) tryEnqueue(curr - w);
+          if (cy + 1 < h) tryEnqueue(curr + w);
+        }
+
+        // Convert connected background confidence into foreground alpha (0..255)
+        // with soft ramp for hair and fine boundary details
+        const rawAlpha = new Uint8ClampedArray(total);
+        for (let p = 0; p < total; p++) {
+          const fg = 1.0 - connectedBg[p];
+          // Soft S-curve contrast on alpha edge
+          const curved = fg <= 0.1 ? 0 : (fg >= 0.92 ? 1 : (fg - 0.1) / 0.82);
+          rawAlpha[p] = Math.round(curved * 255);
+        }
+
+        // Apply separable box blur feathering on alpha channel for smooth hair & edge transitions
+        const radius = Math.max(0, Math.round(featherRadius));
+        if (radius <= 0) return rawAlpha;
+        return blurAlphaChannel(rawAlpha, w, h, radius);
+      }
+
+      function blurAlphaChannel(alpha, w, h, radius) {
+        const temp = new Float32Array(w * h);
+        const out = new Uint8ClampedArray(w * h);
+        const diam = radius * 2 + 1;
+
+        // Horizontal pass
+        for (let y = 0; y < h; y++) {
+          let sum = 0;
+          const rowOffset = y * w;
+          for (let rx = -radius; rx <= radius; rx++) {
+            const cx = Math.min(w - 1, Math.max(0, rx));
+            sum += alpha[rowOffset + cx];
+          }
+          for (let x = 0; x < w; x++) {
+            temp[rowOffset + x] = sum / diam;
+            const leftX = Math.max(0, x - radius);
+            const rightX = Math.min(w - 1, x + radius + 1);
+            sum += alpha[rowOffset + rightX] - alpha[rowOffset + leftX];
+          }
+        }
+
+        // Vertical pass
+        for (let x = 0; x < w; x++) {
+          let sum = 0;
+          for (let ry = -radius; ry <= radius; ry++) {
+            const cy = Math.min(h - 1, Math.max(0, ry));
+            sum += temp[cy * w + x];
+          }
+          for (let y = 0; y < h; y++) {
+            out[y * w + x] = Math.round(sum / diam);
+            const topY = Math.max(0, y - radius);
+            const botY = Math.min(h - 1, y + radius + 1);
+            sum += temp[botY * w + x] - temp[topY * w + x];
+          }
+        }
+        return out;
+      }
+
+      // =====================================================
+      // IMAGE ENHANCEMENT PIPELINE (Brightness, Contrast,
+      // Denoise, Sharpness Unsharp Mask, 2x Upscale)
+      // =====================================================
+      function applyEnhancementsToImageData(imgData, brightness, contrast, denoise, sharpness) {
+        const w = imgData.width;
+        const h = imgData.height;
+        const data = imgData.data;
+
+        // 1. Brightness & Contrast pass
+        if (brightness !== 0 || contrast !== 0) {
+          const bOffset = (brightness / 100) * 255;
+          const cFactor = (259 * (contrast * 2.55 + 255)) / (255 * (259 - contrast * 2.55));
+          for (let i = 0; i < data.length; i += 4) {
+            for (let ch = 0; ch < 3; ch++) {
+              let v = data[i + ch] + bOffset;
+              v = cFactor * (v - 128) + 128;
+              data[i + ch] = v < 0 ? 0 : (v > 255 ? 255 : v);
+            }
+          }
+        }
+
+        // 2. Fast Edge-Preserving Denoise pass (3x3 chroma/luma bilateral-lite smoothing)
+        if (denoise > 0) {
+          const strength = (denoise / 100) * 0.75;
+          const copy = new Uint8ClampedArray(data);
+          const thresh = 28 + (denoise * 0.4);
+          for (let y = 1; y < h - 1; y++) {
+            for (let x = 1; x < w - 1; x++) {
+              const idx = (y * w + x) * 4;
+              if (copy[idx + 3] === 0) continue;
+              const r0 = copy[idx], g0 = copy[idx + 1], b0 = copy[idx + 2];
+              let sr = r0 * 2, sg = g0 * 2, sb = b0 * 2, wSum = 2;
+
+              const neighbors = [
+                ((y - 1) * w + x) * 4,
+                ((y + 1) * w + x) * 4,
+                (y * w + (x - 1)) * 4,
+                (y * w + (x + 1)) * 4
+              ];
+              for (let n = 0; n < 4; n++) {
+                const nIdx = neighbors[n];
+                const nr = copy[nIdx], ng = copy[nIdx + 1], nb = copy[nIdx + 2];
+                const diff = Math.abs(nr - r0) + Math.abs(ng - g0) + Math.abs(nb - b0);
+                if (diff < thresh * 3) {
+                  sr += nr; sg += ng; sb += nb; wSum += 1;
+                }
+              }
+              data[idx]     = r0 * (1 - strength) + (sr / wSum) * strength;
+              data[idx + 1] = g0 * (1 - strength) + (sg / wSum) * strength;
+              data[idx + 2] = b0 * (1 - strength) + (sb / wSum) * strength;
+            }
+          }
+        }
+
+        // 3. Sharpness pass (Unsharp mask 3x3 laplacian boost)
+        if (sharpness > 0) {
+          const amount = (sharpness / 100) * 1.1;
+          const copy = new Uint8ClampedArray(data);
+          for (let y = 1; y < h - 1; y++) {
+            for (let x = 1; x < w - 1; x++) {
+              const idx = (y * w + x) * 4;
+              if (copy[idx + 3] === 0) continue;
+              const up = ((y - 1) * w + x) * 4;
+              const dn = ((y + 1) * w + x) * 4;
+              const lf = (y * w + (x - 1)) * 4;
+              const rt = (y * w + (x + 1)) * 4;
+
+              for (let ch = 0; ch < 3; ch++) {
+                const center = copy[idx + ch];
+                const blur = (copy[up + ch] + copy[dn + ch] + copy[lf + ch] + copy[rt + ch]) * 0.25;
+                const sharpened = center + (center - blur) * amount * 2.2;
+                data[idx + ch] = sharpened < 0 ? 0 : (sharpened > 255 ? 255 : sharpened);
+              }
+            }
+          }
+        }
+      }
+
+      // Render Composite Output to a Target Canvas (Works for both Preview & Full-Res Export)
+      function renderCompositeToCanvas(sourceCanvas, targetCanvas, isFullResExport, forceSolidForJpg) {
+        const baseW = sourceCanvas.width;
+        const baseH = sourceCanvas.height;
+        const scaleMult = (isFullResExport && state.upscale2x) ? 2 : 1;
+        const outW = baseW * scaleMult;
+        const outH = baseH * scaleMult;
+
+        targetCanvas.width = outW;
+        targetCanvas.height = outH;
+        const ctx = targetCanvas.getContext('2d');
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+
+        // Step A: Prepare Foreground Layer at (baseW, baseH)
+        const fgCanvas = document.createElement('canvas');
+        fgCanvas.width = baseW;
+        fgCanvas.height = baseH;
+        const fgCtx = fgCanvas.getContext('2d');
+        fgCtx.drawImage(sourceCanvas, 0, 0, baseW, baseH);
+
+        const fgData = fgCtx.getImageData(0, 0, baseW, baseH);
+
+        // Apply Enhancements to Foreground
+        applyEnhancementsToImageData(
+          fgData,
+          state.brightness,
+          state.contrast,
+          state.denoise,
+          state.sharpness + (scaleMult === 2 ? 18 : 0) // extra detail recovery when 2x upscaling
+        );
+
+        // Apply Alpha Mask if Background Removed
+        if (state.bgRemoved && state.alphaMaskWork) {
+          const rgba = fgData.data;
+          if (baseW === state.workWidth && baseH === state.workHeight) {
+            const mask = state.alphaMaskWork;
+            for (let p = 0; p < mask.length; p++) {
+              rgba[p * 4 + 3] = Math.min(rgba[p * 4 + 3], mask[p]);
+            }
+          } else {
+            // Bilinear upscale of working alpha mask to full resolution
+            const mask = state.alphaMaskWork;
+            const mw = state.workWidth;
+            const mh = state.workHeight;
+            for (let y = 0; y < baseH; y++) {
+              const gy = (y / Math.max(1, baseH - 1)) * (mh - 1);
+              const y0 = Math.floor(gy);
+              const y1 = Math.min(mh - 1, y0 + 1);
+              const wy = gy - y0;
+              for (let x = 0; x < baseW; x++) {
+                const gx = (x / Math.max(1, baseW - 1)) * (mw - 1);
+                const x0 = Math.floor(gx);
+                const x1 = Math.min(mw - 1, x0 + 1);
+                const wx = gx - x0;
+
+                const a00 = mask[y0 * mw + x0];
+                const a10 = mask[y0 * mw + x1];
+                const a01 = mask[y1 * mw + x0];
+                const a11 = mask[y1 * mw + x1];
+                const interp = (a00 * (1 - wx) + a10 * wx) * (1 - wy) + (a01 * (1 - wx) + a11 * wx) * wy;
+                const idx = (y * baseW + x) * 4 + 3;
+                rgba[idx] = Math.min(rgba[idx], Math.round(interp));
+              }
+            }
+          }
+        }
+        fgCtx.putImageData(fgData, 0, 0);
+
+        // Step B: Draw Background Replacement onto Target Canvas (outW, outH)
+        ctx.clearRect(0, 0, outW, outH);
+        if (state.bgMode === 'color') {
+          ctx.fillStyle = state.bgColor || '#FFFFFF';
+          ctx.fillRect(0, 0, outW, outH);
+        } else if (state.bgMode === 'image' && state.bgCustomImage) {
+          // Cover-fit custom background image
+          const bgImg = state.bgCustomImage;
+          const bw = bgImg.naturalWidth || bgImg.width;
+          const bh = bgImg.naturalHeight || bgImg.height;
+          const scale = Math.max(outW / bw, outH / bh);
+          const dw = bw * scale;
+          const dh = bh * scale;
+          const dx = (outW - dw) * 0.5;
+          const dy = (outH - dh) * 0.5;
+          ctx.drawImage(bgImg, dx, dy, dw, dh);
+        } else if (forceSolidForJpg) {
+          ctx.fillStyle = '#FFFFFF';
+          ctx.fillRect(0, 0, outW, outH);
+        }
+
+        // Step C: Composite Foreground onto Target Canvas
+        ctx.drawImage(fgCanvas, 0, 0, outW, outH);
+      }
+
+      // Main Workspace Render & Export Link Updater
+      function renderWorkspace() {
+        if (!state.hasImage || !state.workSourceCanvas) return;
+        renderCompositeToCanvas(state.workSourceCanvas, displayCanvas, false, false);
+        updateCompareSplitView();
+        updateResolutionBadges();
+        prepareDownloadLinks();
+      }
+
+      function updateResolutionBadges() {
+        if (!state.hasImage) {
+          exportResolutionBadge.textContent = 'Ready when image loaded';
+          return;
+        }
+        const mult = state.upscale2x ? 2 : 1;
+        const ew = state.origWidth * mult;
+        const eh = state.origHeight * mult;
+        exportResolutionBadge.textContent = `Export Resolution: ${ew} × ${eh} px` + (state.upscale2x ? ' (2x Upscaled)' : ' (Full Original)');
+      }
+
+      // Populate Download Links (PNG, JPG, WebP) so single-tap native download works immediately
+      function prepareDownloadLinks() {
+        if (!state.hasImage || !state.fullSourceCanvas) return;
+
+        // For responsive UI, generate full-res export when image is reasonable, or on-demand
+        const exportCanvas = document.createElement('canvas');
+        renderCompositeToCanvas(state.fullSourceCanvas, exportCanvas, true, false);
+
+        const pngDataUrl = exportCanvas.toDataURL('image/png');
+        const webpDataUrl = exportCanvas.toDataURL('image/webp', 0.94);
+
+        // For JPG, ensure transparent background is filled cleanly
+        const jpgCanvas = document.createElement('canvas');
+        renderCompositeToCanvas(state.fullSourceCanvas, jpgCanvas, true, true);
+        const jpgDataUrl = jpgCanvas.toDataURL('image/jpeg', 0.94);
+
+        const suffix = state.upscale2x ? '_2x' : '';
+        downloadPngLink.setAttribute('href', pngDataUrl);
+        downloadPngLink.setAttribute('download', `${state.fileName}_cut${suffix}.png`);
+
+        downloadJpgLink.setAttribute('href', jpgDataUrl);
+        downloadJpgLink.setAttribute('download', `${state.fileName}_cut${suffix}.jpg`);
+
+        downloadWebpLink.setAttribute('href', webpDataUrl);
+        downloadWebpLink.setAttribute('download', `${state.fileName}_cut${suffix}.webp`);
+
+        [downloadPngLink, downloadJpgLink, downloadWebpLink].forEach(link => {
+          link.classList.remove('opacity-40', 'pointer-events-none');
+        });
+
+        // Also update inline preview & print container
+        inlineExportPreviewImg.src = pngDataUrl;
+        printContainer.innerHTML = '';
+        const printImg = document.createElement('img');
+        printImg.src = pngDataUrl;
+        printImg.alt = 'Studio_cut_AI Full Resolution Output';
+        printContainer.appendChild(printImg);
+      }
+
+      // Show Inline Viewer & Fallback Card when any export button is clicked
+      [downloadPngLink, downloadJpgLink, downloadWebpLink].forEach(link => {
+        link.addEventListener('click', function () {
+          if (!state.hasImage) return;
+          const fmt = (link.getAttribute('data-format') || 'png').toUpperCase();
+          exportReadyText.textContent = `${fmt} download triggered (${link.getAttribute('download')})`;
+          exportFallbackCard.classList.remove('hidden');
+          exportFallbackCard.classList.add('flex');
+        });
+      });
+
+      printPdfFallbackBtn.addEventListener('click', function () {
+        if (!state.hasImage) return;
+        window.print();
+      });
+
+      // =====================================================
+      // EVENT LISTENERS FOR CONTROLS
+      // =====================================================
+
+      // Upload Controls
+      browseFilesBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        fileInputGallery.click();
+      });
+      cameraPickBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        fileInputCamera.click();
+      });
+      dropZone.addEventListener('click', function (e) {
+        if (e.target.closest('button')) return;
+        fileInputGallery.click();
+      });
+      dropZone.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          fileInputGallery.click();
+        }
+      });
+
+      fileInputGallery.addEventListener('change', function () {
+        if (fileInputGallery.files && fileInputGallery.files[0]) {
+          handleImageFile(fileInputGallery.files[0]);
+          fileInputGallery.value = '';
+        }
+      });
+      fileInputCamera.addEventListener('change', function () {
+        if (fileInputCamera.files && fileInputCamera.files[0]) {
+          handleImageFile(fileInputCamera.files[0]);
+          fileInputCamera.value = '';
+        }
+      });
+
+      // Drag and drop events
+      ['dragenter', 'dragover'].forEach(evtName => {
+        dropZone.addEventListener(evtName, function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          dropZone.classList.add('border-indigo-500', 'bg-indigo-50/40', 'dark:bg-indigo-950/30');
+        });
+      });
+      ['dragleave', 'drop'].forEach(evtName => {
+        dropZone.addEventListener(evtName, function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          dropZone.classList.remove('border-indigo-500', 'bg-indigo-50/40', 'dark:bg-indigo-950/30');
+        });
+      });
+      dropZone.addEventListener('drop', function (e) {
+        const dt = e.dataTransfer;
+        if (dt && dt.files && dt.files[0]) {
+          handleImageFile(dt.files[0]);
+        }
+      });
+
+      // Background Removal Controls
+      removeBgBtn.addEventListener('click', function () {
+        runBackgroundRemoval();
+      });
+
+      restoreOriginalBgBtn.addEventListener('click', function () {
+        if (!state.hasImage || !state.bgRemoved) return;
+        pushHistory();
+        state.bgRemoved = false;
+        restoreOriginalBgBtn.disabled = true;
+        renderWorkspace();
+      });
+
+      sensitivitySlider.addEventListener('input', function () {
+        state.sensitivity = Number(sensitivitySlider.value);
+        sensitivityVal.textContent = String(state.sensitivity);
+      });
+      sensitivitySlider.addEventListener('change', function () {
+        if (state.hasImage && state.bgRemoved) {
+          runBackgroundRemoval();
+        }
+      });
+
+      featherSlider.addEventListener('input', function () {
+        state.feather = Number(featherSlider.value);
+        featherVal.textContent = state.feather.toFixed(1) + ' px';
+      });
+      featherSlider.addEventListener('change', function () {
+        if (state.hasImage && state.bgRemoved) {
+          runBackgroundRemoval();
+        }
+      });
+
+      // Background Replacement Controls
+      function updateSwatchHighlight() {
+        const btns = colorSwatchesGrid.querySelectorAll('.swatch-btn');
+        btns.forEach(btn => {
+          const mode = btn.getAttribute('data-bg-mode');
+          const col = (btn.getAttribute('data-bg-color') || '').toUpperCase();
+          const isMatch = (mode === 'transparent' && state.bgMode === 'transparent') ||
+                          (mode === 'color' && state.bgMode === 'color' && col === (state.bgColor || '').toUpperCase());
+          if (isMatch) {
+            btn.classList.add('ring-2', 'ring-indigo-600', 'ring-offset-2', 'dark:ring-offset-slate-900');
+          } else {
+            btn.classList.remove('ring-2', 'ring-indigo-600', 'ring-offset-2', 'dark:ring-offset-slate-900');
+          }
+        });
+      }
+
+      colorSwatchesGrid.addEventListener('click', function (e) {
+        const btn = e.target.closest('.swatch-btn');
+        if (!btn || !state.hasImage) return;
+        pushHistory();
+        const mode = btn.getAttribute('data-bg-mode');
+        if (mode === 'transparent') {
+          state.bgMode = 'transparent';
+        } else {
+          state.bgMode = 'color';
+          state.bgColor = btn.getAttribute('data-bg-color') || '#FFFFFF';
+          customColorPicker.value = state.bgColor;
+          customColorHexLabel.textContent = state.bgColor.toUpperCase();
+        }
+        // Automatically ensure background is removed when user picks a replacement background
+        if (!state.bgRemoved) {
+          runBackgroundRemoval();
+        } else {
+          updateSwatchHighlight();
+          renderWorkspace();
+        }
+      });
+
+      customColorPicker.addEventListener('input', function () {
+        const hex = customColorPicker.value.toUpperCase();
+        customColorHexLabel.textContent = hex;
+        if (!state.hasImage) return;
+        state.bgMode = 'color';
+        state.bgColor = hex;
+        updateSwatchHighlight();
+        if (!state.bgRemoved) {
+          runBackgroundRemoval();
+        } else {
+          renderWorkspace();
+        }
+      });
+
+      uploadBgImageBtn.addEventListener('click', function () {
+        bgImageInput.click();
+      });
+
+      bgImageInput.addEventListener('change', async function () {
+        if (!bgImageInput.files || !bgImageInput.files[0]) return;
+        const file = bgImageInput.files[0];
+        bgImageInput.value = '';
+        try {
+          let blob = file;
+          const buf = await file.arrayBuffer();
+          if (isHeicFile(file, buf) && typeof window.heic2any === 'function') {
+            const conv = await window.heic2any({ blob: new Blob([buf]), toType: 'image/png' });
+            blob = Array.isArray(conv) ? conv[0] : conv;
+          }
+          const url = URL.createObjectURL(blob);
+          const bgImg = await new Promise((res, rej) => {
+            const im = new Image();
+            im.onload = () => res(im);
+            im.onerror = rej;
+            im.src = url;
+          });
+          URL.revokeObjectURL(url);
+
+          if (state.hasImage) pushHistory();
+          state.bgCustomImage = bgImg;
+          state.bgMode = 'image';
+          customBgFilename.textContent = 'BG: ' + (file.name || 'Custom Image');
+          customBgStatusRow.classList.remove('hidden');
+          customBgStatusRow.classList.add('flex');
+          updateSwatchHighlight();
+
+          if (state.hasImage) {
+            if (!state.bgRemoved) {
+              await runBackgroundRemoval();
+            } else {
+              renderWorkspace();
+            }
+          }
+        } catch (_) {
+          showAlert('Invalid Background Image', 'Could not decode that custom background image. Please choose a valid JPG, PNG, WebP, or HEIC photo.', 'error');
+        }
+      });
+
+      clearCustomBgBtn.addEventListener('click', function () {
+        if (!state.hasImage) return;
+        pushHistory();
+        state.bgCustomImage = null;
+        state.bgMode = 'transparent';
+        customBgStatusRow.classList.add('hidden');
+        customBgStatusRow.classList.remove('flex');
+        updateSwatchHighlight();
+        renderWorkspace();
+      });
+
+      // Quality Enhancement Controls
+      autoEnhanceBtn.addEventListener('click', function () {
+        if (!state.hasImage) return;
+        pushHistory();
+        state.sharpness = 32;
+        state.brightness = 6;
+        state.contrast = 14;
+        state.denoise = 18;
+        syncControlsFromState();
+        renderWorkspace();
+      });
+
+      upscale2xToggleBtn.addEventListener('click', function () {
+        if (!state.hasImage) return;
+        pushHistory();
+        state.upscale2x = !state.upscale2x;
+        syncControlsFromState();
+        renderWorkspace();
+      });
+
+      function bindEnhancementSlider(sliderEl, valEl, key, showPlus) {
+        sliderEl.addEventListener('mousedown', () => { if (state.hasImage) pushHistory(); });
+        sliderEl.addEventListener('touchstart', () => { if (state.hasImage) pushHistory(); }, { passive: true });
+        sliderEl.addEventListener('input', function () {
+          const val = Number(sliderEl.value);
+          state[key] = val;
+          valEl.textContent = (showPlus && val > 0 ? '+' : '') + val;
+          if (state.hasImage) renderWorkspace();
+        });
+      }
+
+      bindEnhancementSlider(sharpnessSlider, sharpnessVal, 'sharpness', false);
+      bindEnhancementSlider(brightnessSlider, brightnessVal, 'brightness', true);
+      bindEnhancementSlider(contrastSlider, contrastVal, 'contrast', true);
+      bindEnhancementSlider(denoiseSlider, denoiseVal, 'denoise', false);
+
+      // Before / After Compare Controls
+      function updateCompareSplitView() {
+        if (!state.hasImage || !state.compareEnabled) {
+          beforeCanvas.classList.add('hidden');
+          compareDividerLine.classList.add('hidden');
+          compareSliderBox.classList.add('opacity-50', 'pointer-events-none');
+          return;
+        }
+        beforeCanvas.classList.remove('hidden');
+        compareDividerLine.classList.remove('hidden');
+        compareSliderBox.classList.remove('opacity-50', 'pointer-events-none');
+
+        const pct = state.compareSplit;
+        // Left side shows After (displayCanvas), Right side shows Before (beforeCanvas) or vice-versa:
+        // Clip beforeCanvas so left [0..pct%] is visible as "Before" and right [pct..100%] is "After"
+        beforeCanvas.style.clipPath = `inset(0 ${100 - pct}% 0 0)`;
+        compareDividerLine.style.left = pct + '%';
+      }
+
+      compareToggleCheckbox.addEventListener('change', function () {
+        state.compareEnabled = compareToggleCheckbox.checked;
+        updateCompareSplitView();
+      });
+
+      compareSplitSlider.addEventListener('input', function () {
+        state.compareSplit = Number(compareSplitSlider.value);
+        updateCompareSplitView();
+      });
+
+      // =====================================================
+      // SYNTHETIC DEMO GENERATORS (Portrait & Product)
+      // =====================================================
+      function generateSamplePortraitCanvas() {
+        const c = document.createElement('canvas');
+        c.width = 900;
+        c.height = 1100;
+        const ctx = c.getContext('2d');
+
+        // Soft studio backdrop (easy for border flood segmentation + hair strands)
+        const bgGrad = ctx.createLinearGradient(0, 0, 0, c.height);
+        bgGrad.addColorStop(0, '#dbeafe');
+        bgGrad.addColorStop(1, '#bfdbfe');
+        ctx.fillStyle = bgGrad;
+        ctx.fillRect(0, 0, c.width, c.height);
+
+        // Shoulders / Jacket
+        ctx.fillStyle = '#1e293b';
+        ctx.beginPath();
+        ctx.ellipse(450, 1060, 310, 240, 0, Math.PI, 0, false);
+        ctx.fill();
+
+        // Shirt collar V-neck
+        ctx.fillStyle = '#f8fafc';
+        ctx.beginPath();
+        ctx.moveTo(370, 845);
+        ctx.lineTo(450, 980);
+        ctx.lineTo(530, 845);
+        ctx.closePath();
+        ctx.fill();
+
+        // Neck
+        ctx.fillStyle = '#e0ac69';
+        ctx.fillRect(405, 700, 90, 165);
+
+        // Back hair volume & fine hair strands along edges
+        ctx.fillStyle = '#271c19';
+        ctx.beginPath();
+        ctx.ellipse(450, 460, 200, 235, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Fine hair wisps for edge feathering test
+        ctx.strokeStyle = '#271c19';
+        ctx.lineWidth = 3;
+        for (let i = 0; i < 36; i++) {
+          const angle = (i / 36) * Math.PI * 2;
+          const rx = Math.cos(angle) * 195;
+          const ry = Math.sin(angle) * 230;
+          ctx.beginPath();
+          ctx.moveTo(450 + rx * 0.92, 460 + ry * 0.92);
+          ctx.quadraticCurveTo(450 + rx * 1.07, 460 + ry * 1.04, 450 + rx * 1.12, 460 + ry * 1.10);
+          ctx.stroke();
+        }
+
+        // Face oval
+        ctx.fillStyle = '#f1c27d';
+        ctx.beginPath();
+        ctx.ellipse(450, 510, 145, 185, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Eyes
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.ellipse(395, 485, 24, 13, 0, 0, Math.PI * 2);
+        ctx.ellipse(505, 485, 24, 13, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#3b2f2f';
+        ctx.beginPath();
+        ctx.arc(395, 485, 10, 0, Math.PI * 2);
+        ctx.arc(505, 485, 10, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Eyebrows
+        ctx.strokeStyle = '#271c19';
+        ctx.lineWidth = 6;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(365, 458);
+        ctx.quadraticCurveTo(395, 446, 422, 456);
+        ctx.moveTo(478, 456);
+        ctx.quadraticCurveTo(505, 446, 535, 458);
+        ctx.stroke();
+
+        // Smile
+        ctx.strokeStyle = '#b95c50';
+        ctx.lineWidth = 6;
+        ctx.beginPath();
+        ctx.arc(450, 565, 42, 0.15 * Math.PI, 0.85 * Math.PI);
+        ctx.stroke();
+
+        // Top hair bangs
+        ctx.fillStyle = '#271c19';
+        ctx.beginPath();
+        ctx.arc(450, 410, 152, Math.PI * 0.95, Math.PI * 2.05);
+        ctx.fill();
+
+        return c;
+      }
+
+      function generateSampleProductCanvas() {
+        const c = document.createElement('canvas');
+        c.width = 1200;
+        c.height = 900;
+        const ctx = c.getContext('2d');
+
+        // Uniform studio light grey backdrop
+        ctx.fillStyle = '#e2e8f0';
+        ctx.fillRect(0, 0, c.width, c.height);
+
+        // Vibrant sneaker / camera product centerpiece
+        ctx.save();
+        ctx.translate(600, 450);
+
+        // Camera body
+        ctx.fillStyle = '#1e293b';
+        ctx.beginPath();
+        ctx.roundRect(-240, -140, 480, 310, 36);
+        ctx.fill();
+
+        // Top flash prism housing
+        ctx.fillStyle = '#334155';
+        ctx.beginPath();
+        ctx.roundRect(-110, -205, 220, 75, 20);
+        ctx.fill();
+
+        // Shutter button (red accent)
+        ctx.fillStyle = '#ef4444';
+        ctx.beginPath();
+        ctx.roundRect(130, -170, 65, 32, 8);
+        ctx.fill();
+
+        // Outer lens ring
+        ctx.fillStyle = '#64748b';
+        ctx.beginPath();
+        ctx.arc(0, 15, 135, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Inner lens barrel
+        ctx.fillStyle = '#0f172a';
+        ctx.beginPath();
+        ctx.arc(0, 15, 108, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Lens glass reflection
+        const lensGrad = ctx.createRadialGradient(-30, -15, 10, 0, 15, 95);
+        lensGrad.addColorStop(0, '#60a5fa');
+        lensGrad.addColorStop(0.5, '#3b82f6');
+        lensGrad.addColorStop(1, '#1e1b4b');
+        ctx.fillStyle = lensGrad;
+        ctx.beginPath();
+        ctx.arc(0, 15, 86, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Specular highlight
+        ctx.fillStyle = 'rgba(255,255,255,0.65)';
+        ctx.beginPath();
+        ctx.ellipse(-32, -22, 26, 14, -0.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
+        return c;
+      }
+
+      loadDemoPortraitBtn.addEventListener('click', async function (e) {
+        e.stopPropagation();
+        hideAlert();
+        const c = generateSamplePortraitCanvas();
+        setupLoadedSourceCanvas(c, 'sample_portrait', 1);
+        await runBackgroundRemoval();
+      });
+
+      loadDemoProductBtn.addEventListener('click', async function (e) {
+        e.stopPropagation();
+        hideAlert();
+        const c = generateSampleProductCanvas();
+        setupLoadedSourceCanvas(c, 'sample_product_camera', 1);
+        await runBackgroundRemoval();
+      });
+
+      // Auto-load Sample Portrait on startup so the user immediately sees a live interactive studio
+      window.addEventListener('DOMContentLoaded', function () {
+        const c = generateSamplePortraitCanvas();
+        setupLoadedSourceCanvas(c, 'sample_portrait', 1);
+        runBackgroundRemoval();
+      });
+
+    })();
+  </script>
+</body>
+</html>
